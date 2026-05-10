@@ -24,3 +24,5 @@ pnpm-debug.log*
 .idea/
 
 node_modules
+tina/netifly.env
+netifly.env
