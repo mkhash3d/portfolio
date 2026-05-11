@@ -16,10 +16,11 @@ export default defineConfig({
   // Get this from tina.io
   token: process.env.TINA_TOKEN,
 
-  build: {
-    outputFolder: "admin",
-    publicFolder: "public",
-  },
+build: {
+  outputFolder: "admin",
+  publicFolder: "public",
+  host: "https://content.tinajs.io",
+},
   // Uncomment to allow cross-origin requests from non-localhost origins
   // during local development (e.g. GitHub Codespaces, Gitpod, Docker).
   // Use 'private' to allow all private-network IPs (WSL2, Docker, etc.)
