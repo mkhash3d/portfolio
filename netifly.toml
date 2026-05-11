@@ -1,4 +1,4 @@
 [build]
-command = "NODE_OPTIONS=--max-old-space-size=1536 tinacms build && astro build"
+command = "astro build"
 publish = "dist"
 
