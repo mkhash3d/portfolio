@@ -1,0 +1,163 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProjectCard from '../../components/ProjectCard.astro';
+
+// Fetch all projects
+const allProjects = await getCollection('projects');
+
+// Sort all projects by date descending
+const sorted = allProjects.sort(
+  (a, b) => (b.data.date?.valueOf() ?? 0) - (a.data.date?.valueOf() ?? 0)
+);
+
+// Group into { 2025: [...], 2024: [...], ... }
+const byYear = sorted.reduce((acc, project) => {
+  const year = project.data.date
+    ? new Date(project.data.date).getFullYear()
+    : 'Undated';
+  if (!acc[year]) acc[year] = [];
+  acc[year].push(project);
+  return acc;
+}, {} as Record<string | number, typeof sorted>);
+
+// Years sorted descending (most recent first)
+const years = Object.keys(byYear).sort((a, b) => Number(b) - Number(a));
+---
+
+<BaseLayout title="Work — Mark Hashimoto">
+  <main class="work-index">
+    <header class="work-header">
+      <h1>Work</h1>
+      <p class="work-subtitle">
+        Commissions, collaborations, and personal practice.
+      </p>
+
+      <!-- Year jump links — only renders if more than one year exists -->
+      {years.length > 1 && (
+        <nav class="year-nav" aria-label="Jump to year">
+          {years.map(year => (
+            <a href={`#year-${year}`}>{year}</a>
+          ))}
+        </nav>
+      )}
+    </header>
+
+    <!-- One section per year -->
+    {years.map(year => (
+      <section class="year-section" id={`year-${year}`}>
+        <div class="year-label">
+          <span>{year}</span>
+        </div>
+        <div class="project-grid">
+          {byYear[year].map(project => (
+            <ProjectCard project={project} />
+          ))}
+        </div>
+      </section>
+    ))}
+  </main>
+</BaseLayout>
+
+<style>
+  /* ── Page layout ── */
+  .work-index {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  /* ── Header ── */
+  .work-header {
+    margin-bottom: 4rem;
+  }
+
+  .work-header h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+    line-height: 1.1;
+  }
+
+  .work-subtitle {
+    font-size: 1rem;
+    opacity: 0.55;
+    margin: 0 0 1.5rem;
+  }
+
+  /* ── Year jump nav ── */
+  .year-nav {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .year-nav a {
+    font-size: 0.875rem;
+    text-decoration: none;
+    opacity: 0.5;
+    border-bottom: 1px solid currentColor;
+    padding-bottom: 1px;
+    transition: opacity 0.15s;
+  }
+
+  .year-nav a:hover {
+    opacity: 1;
+  }
+
+  /* ── Year section ── */
+  .year-section {
+    margin-bottom: 5rem;
+  }
+
+  .year-label {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .year-label span {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.4;
+    white-space: nowrap;
+  }
+
+  /* Horizontal rule extending from the year label */
+  .year-label::after {
+    content: '';
+    flex: 1;
+    height: 0.5px;
+    background: currentColor;
+    opacity: 0.15;
+  }
+
+  /* ── Project grid ── */
+  .project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .work-index {
+      padding: 2rem 1rem;
+    }
+
+    .work-header h1 {
+      font-size: 1.75rem;
+    }
+
+    .project-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .year-section {
+      margin-bottom: 3rem;
+    }
+  }
+</style>
