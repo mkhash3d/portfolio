@@ -64,15 +64,18 @@ All content is stored as markdown files in the GitHub repo. Tina CMS is the
 editor interface only — it writes to and reads from the markdown files. Content
 is not stored in any external database or Tina Cloud storage.
 
-### Two collections
+### Three collections
 
-Content is split into two Tina collections:
+Content is split into three Tina collections:
 
-- **projects** — all visual work: professional commissions, personal generative
-  series, installations. URL pattern: `/work/[slug]`
+- **projects** — professional commissions, personal generative series,
+  installations. URL pattern: `/work/[slug]`
 - **writing** — technical articles and research notes. Separate from projects
   so technical writing does not visually dilute portfolio work. URL pattern:
   `/writing/[slug]`
+- **visuals** — standalone generative renders and artworks that do not
+  correspond to a project case study. Displayed at `/visuals` grouped by
+  series. No individual pages — lightbox only.
 
 ### Schema sync requirement
 
@@ -125,6 +128,20 @@ Keep featured projects to 4–6 maximum.
 | `coverImage` | image | Optional |
 | `body` | rich-text | `isBody: true` |
 
+### visuals collection
+
+Standalone generative renders and artworks. No individual pages — displayed
+at `/visuals` in a grid grouped by series, with a lightbox for enlarged view.
+
+| Field | Tina type | Notes |
+|-------|-----------|-------|
+| `title` | string | `isTitle: true`, `required: true` |
+| `image` | image | Required. The artwork itself. |
+| `series` | string | Group name e.g. Physarum, Trails, AlphaCarve. Drives page grouping. |
+| `date` | datetime | Optional. Used for sorting within a series. |
+| `tools` | string | `list: true`. Optional. |
+| `notes` | string | `ui: { component: 'textarea' }`. Optional short description. |
+
 ---
 
 ## 4. File structure
@@ -143,7 +160,8 @@ portfolio/
 │   ├── content/
 │   │   ├── config.ts         ← Astro Zod schemas (must match tina/config.ts)
 │   │   ├── projects/         ← One .md file per project (Tina managed)
-│   │   └── writing/          ← One .md file per article (Tina managed)
+│   │   ├── writing/          ← One .md file per article (Tina managed)
+│   │   └── visuals/          ← One .md file per artwork (Tina managed)
 │   ├── layouts/
 │   │   ├── BaseLayout.astro  ← HTML head, meta tags, global CSS, nav, footer
 │   │   └── ProjectLayout.astro ← Layout for individual project pages
@@ -152,6 +170,7 @@ portfolio/
 │   │   ├── work/
 │   │   │   ├── index.astro   ← Full project index, grouped by year
 │   │   │   └── [slug].astro  ← Dynamic project page
+│   │   ├── visuals.astro     ← Visuals page, grouped by series, lightbox
 │   │   ├── about.astro
 │   │   └── contact.astro
 │   └── styles/
@@ -217,6 +236,22 @@ collections: [
       { type: "rich-text", name: "body", label: "Body", isBody: true },
     ],
   },
+  {
+    name: "visuals",
+    label: "Visuals",
+    path: "src/content/visuals",
+    format: "md",
+    fields: [
+      { type: "string", name: "title", label: "Title", isTitle: true, required: true },
+      { type: "image", name: "image", label: "Image", required: true },
+      { type: "string", name: "series", label: "Series",
+        description: "Group name e.g. Physarum, Trails, AlphaCarve" },
+      { type: "datetime", name: "date", label: "Date" },
+      { type: "string", name: "tools", label: "Tools", list: true },
+      { type: "string", name: "notes", label: "Notes",
+        ui: { component: "textarea" } },
+    ],
+  },
 ],
 ```
 
@@ -253,7 +288,19 @@ const writing = defineCollection({
   }),
 });
 
-export const collections = { projects, writing };
+const visuals = defineCollection({
+  type: 'content',
+  schema: z.object({
+    title: z.string(),
+    image: z.string(),
+    series: z.string().optional(),
+    date: z.coerce.date().optional(),
+    tools: z.array(z.string()).optional(),
+    notes: z.string().optional(),
+  }),
+});
+
+export const collections = { projects, writing, visuals };
 ```
 
 > Note: `body` is not in the Zod schema. Astro handles the markdown body
@@ -267,8 +314,10 @@ collection path is missing.
 ```powershell
 New-Item -ItemType Directory -Force -Path src\content\projects
 New-Item -ItemType Directory -Force -Path src\content\writing
+New-Item -ItemType Directory -Force -Path src\content\visuals
 New-Item -ItemType File -Path src\content\projects\.gitkeep
 New-Item -ItemType File -Path src\content\writing\.gitkeep
+New-Item -ItemType File -Path src\content\visuals\.gitkeep
 ```
 
 ### A4 — Build Tina admin bundle and push
@@ -583,27 +632,262 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 ---
 
-## 7. Validation checklist
+## 7. Section C — Visuals page
 
-### Local
+Section C adds the visuals collection page. Complete after Section B is
+validated and working.
+
+### C1 — Create src/pages/visuals.astro
+
+Artworks are grouped by series. Within each series they are sorted by date.
+A series with no name falls under "Other". GLightbox handles the enlarged
+image view client-side — no individual artwork pages are generated.
+
+```astro
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const allVisuals = await getCollection('visuals');
+
+// Sort by date descending within each series
+const sorted = allVisuals.sort(
+  (a, b) => (b.data.date?.valueOf() ?? 0) - (a.data.date?.valueOf() ?? 0)
+);
+
+// Group by series
+const bySeries = sorted.reduce((acc, item) => {
+  const series = item.data.series ?? 'Other';
+  if (!acc[series]) acc[series] = [];
+  acc[series].push(item);
+  return acc;
+}, {} as Record<string, typeof sorted>);
+
+// Series names sorted alphabetically, Other always last
+const seriesNames = Object.keys(bySeries).sort((a, b) => {
+  if (a === 'Other') return 1;
+  if (b === 'Other') return -1;
+  return a.localeCompare(b);
+});
+---
+
+<BaseLayout title="Visuals — Mark Hashimoto">
+  <main class="visuals-index">
+    <header class="visuals-header">
+      <h1>Visuals</h1>
+      <p class="visuals-subtitle">Generative renders and standalone artworks.</p>
+
+      {seriesNames.length > 1 && (
+        <nav class="series-nav" aria-label="Jump to series">
+          {seriesNames.map(name => (
+            <a href={`#series-${name.toLowerCase().replace(/\s+/g, '-')}`}>
+              {name}
+            </a>
+          ))}
+        </nav>
+      )}
+    </header>
+
+    {seriesNames.map(name => (
+      <section
+        class="series-section"
+        id={`series-${name.toLowerCase().replace(/\s+/g, '-')}`}
+      >
+        <div class="series-label">
+          <span>{name}</span>
+        </div>
+        <div class="visuals-grid">
+          {bySeries[name].map(item => (
+            <a
+              href={item.data.image}
+              class="glightbox visual-item"
+              data-title={item.data.title}
+              data-description={item.data.notes ?? ''}
+            >
+              <img src={item.data.image} alt={item.data.title} loading="lazy" />
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+  </main>
+</BaseLayout>
+
+<!-- GLightbox — vanilla JS lightbox, no framework dependency -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js" is:inline></script>
+<script is:inline>
+  document.addEventListener('DOMContentLoaded', () => {
+    GLightbox({ selector: '.glightbox' });
+  });
+</script>
+
+<style>
+  /* ── Page layout ── */
+  .visuals-index {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  /* ── Header ── */
+  .visuals-header {
+    margin-bottom: 4rem;
+  }
+
+  .visuals-header h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem;
+  }
+
+  .visuals-subtitle {
+    font-size: 1rem;
+    opacity: 0.55;
+    margin: 0 0 1.5rem;
+  }
+
+  /* ── Series jump nav ── */
+  .series-nav {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .series-nav a {
+    font-size: 0.875rem;
+    text-decoration: none;
+    opacity: 0.5;
+    border-bottom: 1px solid currentColor;
+    padding-bottom: 1px;
+    transition: opacity 0.15s;
+  }
+
+  .series-nav a:hover { opacity: 1; }
+
+  /* ── Series section ── */
+  .series-section {
+    margin-bottom: 5rem;
+  }
+
+  .series-label {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .series-label span {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.4;
+    white-space: nowrap;
+  }
+
+  .series-label::after {
+    content: '';
+    flex: 1;
+    height: 0.5px;
+    background: currentColor;
+    opacity: 0.15;
+  }
+
+  /* ── Visuals grid ── */
+  .visuals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
+  }
+
+  /* ── Individual visual item ── */
+  .visual-item {
+    display: block;
+    overflow: hidden;
+    border-radius: 4px;
+    aspect-ratio: 1 / 1;
+  }
+
+  .visual-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.3s ease, opacity 0.2s;
+  }
+
+  .visual-item:hover img {
+    transform: scale(1.03);
+    opacity: 0.85;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 640px) {
+    .visuals-index { padding: 2rem 1rem; }
+    .visuals-header h1 { font-size: 1.75rem; }
+    .visuals-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+  }
+</style>
+```
+
+> Note: GLightbox is loaded from CDN. It is vanilla JavaScript with no
+> framework dependency and adds ~15KB to the page. It only activates on
+> user interaction. No npm install required.
+
+### C2 — Create src/content/visuals directory
+
+```powershell
+New-Item -ItemType Directory -Force -Path src\content\visuals
+New-Item -ItemType File -Path src\content\visuals\.gitkeep
+```
+
+### C3 — Rebuild Tina admin bundle and push
+
+```powershell
+npx tinacms build
+git add .
+git commit -m "add visuals collection and page"
+git push origin main
+```
+
+After deploy confirm:
+- `localhost:4321/visuals` loads without error (empty grid is expected)
+- Visuals collection appears in the Tina editor sidebar
+- Creating a test visual entry with an image renders correctly on the page
+
+---
+
+## 8. Validation checklist
+
+### Local — Sections A and B
 
 - [ ] `localhost:4321` loads homepage without 404
 - [ ] `localhost:4321/work` loads without error (empty grid is expected)
 - [ ] `localhost:4321/about` and `/contact` load without error
 - [ ] `localhost:4321/admin/index.html` loads Tina editor
-- [ ] Projects and Writing collections appear in Tina sidebar
+- [ ] Projects, Writing, and Visuals collections appear in Tina sidebar
 - [ ] Create a test project entry — confirm `.md` file appears in `src/content/projects/`
 - [ ] `localhost:4321/work/[test-slug]` renders the test project page
+
+### Local — Section C
+
+- [ ] `localhost:4321/visuals` loads without error (empty grid is expected)
+- [ ] Create a test visual entry with an image — confirm it appears on the page
+- [ ] Clicking a visual opens the GLightbox overlay
 
 ### Deploy
 
 - [ ] Push to GitHub and confirm Netlify build completes in under 30 seconds
 - [ ] Live site at `markhashimotoportfolio.netlify.app` reflects changes
-- [ ] Live `/admin/index.html` still loads and shows both collections
+- [ ] Live `/admin/index.html` still loads and shows all three collections
 
 ---
 
-## 8. Do not do any of the following
+## 9. Do not do any of the following
 
 - Do not change the Netlify build command from `astro build`
 - Do not attempt to resolve npm peer dependency warnings about React versions
@@ -615,16 +899,18 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 - Do not change Tina Cloud credentials or environment variable names
 - Do not touch `src/pages/admin/index.astro` — this is the Tina editor interface,
   not a content page
+- Do not generate individual pages for visuals entries — the lightbox handles
+  enlarged view on the `/visuals` page, no `/visuals/[slug].astro` is needed
 
 ---
 
-## 9. Current build status
+## 10. Current build status
 
 Update this section as tasks are completed.
 
-- [x] A1 — tina/config.ts updated with projects and writing collections
+- [x] A1 — tina/config.ts updated with projects, writing, and visuals collections
 - [x] A2 — src/content.config.ts created (Astro 6 glob loader format)
-- [x] A3 — Content directories created
+- [x] A3 — Content directories created (projects, writing, visuals)
 - [x] A4 — Tina admin bundle rebuilt and pushed
 - [x] B1 — ProjectCard.astro created
 - [x] B2 — ProjectGrid.astro created
@@ -633,3 +919,6 @@ Update this section as tasks are completed.
 - [x] B5 — work/index.astro created (year-grouped version)
 - [x] B6 — index.astro updated
 - [x] B7 — about.astro and contact.astro created
+- [x] C1 — visuals.astro created (series-grouped, GLightbox)
+- [x] C2 — src/content/visuals directory created
+- [x] C3 — Tina admin bundle rebuilt with visuals collection
