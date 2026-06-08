@@ -1,7 +1,7 @@
 ---
 const { project } = Astro.props;
 ---
-<a href={`/work/${project.slug}`} class="project-card">
+<a href={`/work/${project.id.replace(/\.md$/, '')}`} class="project-card">
   {project.data.coverImage && (
     <img src={project.data.coverImage} alt={project.data.title} />
   )}
