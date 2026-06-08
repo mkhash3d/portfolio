@@ -66,6 +66,21 @@ build: {
           { type: "rich-text", name: "body", label: "Body", isBody: true },
         ],
       },
+      {
+        name: "visuals",
+        label: "Visuals",
+        path: "src/content/visuals",
+        format: "md",
+        fields: [
+          { type: "string", name: "title", label: "Title", isTitle: true, required: true },
+          { type: "image", name: "image", label: "Image", required: true },
+          { type: "string", name: "series", label: "Series",
+            description: "Group name e.g. Physarum, Trails, AlphaCarve" },
+          { type: "datetime", name: "date", label: "Date" },
+          { type: "string", name: "tools", label: "Tools", list: true },
+          { type: "string", name: "notes", label: "Notes", ui: { component: "textarea" } },
+        ],
+      },
     ],
   },
 });

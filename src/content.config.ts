@@ -26,4 +26,16 @@ const writing = defineCollection({
   }),
 });
 
-export const collections = { projects, writing };
+const visuals = defineCollection({
+  loader: glob({ pattern: '**/*.md', base: './src/content/visuals' }),
+  schema: z.object({
+    title: z.string(),
+    image: z.string(),
+    series: z.string().optional(),
+    date: z.coerce.date().optional(),
+    tools: z.array(z.string()).optional(),
+    notes: z.string().optional(),
+  }),
+});
+
+export const collections = { projects, writing, visuals };
