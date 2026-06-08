@@ -622,14 +622,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
 Update this section as tasks are completed.
 
-- [ ] A1 — tina/config.ts updated with projects and writing collections
-- [ ] A2 — src/content/config.ts created
-- [ ] A3 — Content directories created
-- [ ] A4 — Tina admin bundle rebuilt and pushed
-- [ ] B1 — ProjectCard.astro created
-- [ ] B2 — ProjectGrid.astro created
-- [ ] B3 — ProjectLayout.astro created
-- [ ] B4 — work/[slug].astro created
-- [ ] B5 — work/index.astro created (year-grouped version)
-- [ ] B6 — index.astro updated
-- [ ] B7 — about.astro and contact.astro created
+- [x] A1 — tina/config.ts updated with projects and writing collections
+- [x] A2 — src/content.config.ts created (Astro 6 glob loader format)
+- [x] A3 — Content directories created
+- [x] A4 — Tina admin bundle rebuilt and pushed
+- [x] B1 — ProjectCard.astro created
+- [x] B2 — ProjectGrid.astro created
+- [x] B3 — ProjectLayout.astro created
+- [x] B4 — work/[slug].astro created
+- [x] B5 — work/index.astro created (year-grouped version)
+- [x] B6 — index.astro updated
+- [x] B7 — about.astro and contact.astro created
